@@ -45,7 +45,9 @@ enum
     LAST_IC_ATTRIBUTE
   };
 
+typedef struct xim_wayland_input_context_t xim_wayland_input_context_t;
 typedef struct xim_wayland_input_method_t xim_wayland_input_method_t;
+typedef struct xim_wayland_t xim_wayland_t;
 
 struct xim_wayland_input_context_t
 {
@@ -57,10 +59,10 @@ struct xim_wayland_input_context_t
 
   xcb_xim_attribute_t *attrs[LAST_IC_ATTRIBUTE];
 
+  xim_wayland_t *xw;
+
   struct wl_list link;
 };
-
-typedef struct xim_wayland_input_context_t xim_wayland_input_context_t;
 
 struct xim_wayland_input_method_t
 {
@@ -101,11 +103,7 @@ handle_wayland_enter (void *data,
 		      struct wl_text_input *wl_text_input,
 		      struct wl_surface *surface)
 {
-  xim_wayland_input_context_t *input_context;
-
-  input_context = wl_text_input_get_user_data (wl_text_input);
-  if (!input_context)
-    return;
+  xim_wayland_input_context_t *input_context = data;
 
   wl_text_input_commit_state (wl_text_input, ++input_context->serial);
 }
@@ -161,16 +159,11 @@ handle_wayland_commit_string (void *data,
                               uint32_t serial,
                               const char *text)
 {
-  xim_wayland_t *xw = data;
-  xim_wayland_input_context_t *input_context;
+  xim_wayland_input_context_t *input_context = data;
   xcb_generic_error_t *error;
 
-  input_context = wl_text_input_get_user_data (wl_text_input);
-  if (!input_context)
-    return;
-
   error = NULL;
-  if (!xcb_xim_commit (xw->xim,
+  if (!xcb_xim_commit (input_context->xw->xim,
                        input_context->input_method->transport,
                        input_context->input_method->id,
                        input_context->id,
@@ -232,7 +225,8 @@ handle_wayland_text_direction (void *data,
 {
 }
 
-static const struct wl_text_input_listener text_input_listener =
+static const struct wl_text_input_listener
+text_input_listener =
   {
     handle_wayland_enter,
     handle_wayland_leave,
@@ -336,6 +330,7 @@ xim_wayland_input_context_new (xim_wayland_t *xw,
   if (!input_context)
     return NULL;
 
+  input_context->xw = xw;
   input_context->text_input =
     wl_text_input_manager_create_text_input (xw->text_input_manager);
   if (!input_context->text_input)
@@ -343,8 +338,9 @@ xim_wayland_input_context_new (xim_wayland_t *xw,
       free (input_context);
       return NULL;
     }
+
   wl_text_input_add_listener (input_context->text_input,
-                              &text_input_listener, xw);
+                              &text_input_listener, input_context);
 
   input_context->surface =
     wl_compositor_create_surface (xw->compositor);
@@ -358,8 +354,6 @@ xim_wayland_input_context_new (xim_wayland_t *xw,
   input_context->input_method = input_method;
 
   init_ic_attributes (input_context);
-
-  wl_text_input_set_user_data (input_context->text_input, input_context);
 
   return input_context;
 }
@@ -1155,6 +1149,7 @@ main (int argc, char **argv)
   int c;
   char *opt_locale;
   xim_wayland_t xw;
+  xim_wayland_input_method_t *input_method, *next;
   xcb_generic_error_t *error;
   bool success;
 
@@ -1244,6 +1239,13 @@ main (int argc, char **argv)
   success = main_loop (&xw);
 
  out:
+  wl_list_for_each_safe (input_method, next,
+                         &xw.input_method_list, link)
+    {
+      wl_list_remove (&input_method->link);
+      xim_wayland_input_method_free (input_method);
+    }
+
   if (xw.display)
     wl_display_disconnect (xw.display);
 

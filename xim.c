@@ -29,7 +29,7 @@
 #include <stddef.h>
 #include "xim.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define XCB_XIM_CONNECT 1
 #define XCB_XIM_CONNECT_REPLY 2
