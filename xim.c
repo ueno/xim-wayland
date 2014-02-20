@@ -285,9 +285,10 @@ init_transport (xcb_xim_server_connection_t *xim,
                                                get_property_cookie,
                                                error);
 
-  if (get_property_reply->type != XCB_NONE
-      && (get_property_reply->type != XCB_ATOM_ATOM
-          || get_property_reply->format != 32))
+  if (!get_property_reply
+      || (get_property_reply->type != XCB_NONE
+          && (get_property_reply->type != XCB_ATOM_ATOM
+              || get_property_reply->format != 32)))
     {
       free (get_property_reply);
       return false;
@@ -312,6 +313,7 @@ init_transport (xcb_xim_server_connection_t *xim,
       if (get_selection_owner_reply->owner != XCB_WINDOW_NONE
           && get_selection_owner_reply->owner != xim->accept_window)
         {
+          free (get_property_reply);
           free (get_selection_owner_reply);
           return false;
         }
@@ -350,6 +352,7 @@ init_transport (xcb_xim_server_connection_t *xim,
     }
 
   xcb_flush (xim->connection);
+  free (get_property_reply);
 
   return true;
 }
@@ -2410,6 +2413,7 @@ do_client_message (xcb_xim_server_connection_t *xim,
 
       container->requestor = transport;
       memcpy (&container->request, data, length);
+      free (data);
 
       switch (container->request.major_opcode)
         {
@@ -2417,14 +2421,16 @@ do_client_message (xcb_xim_server_connection_t *xim,
           if (length < 8)
             goto error;
 
-          transport->endian = data[4];
+          transport->endian = ((uint8_t *) &container->request)[4];
           if (!xcb_xim_connect_reply (xim, transport, 1, 0, error))
             goto error;
+          free (container);
           break;
 
         case XCB_XIM_DISCONNECT:
           if (!xcb_xim_disconnect_reply (xim, transport, error))
             goto error;
+          free (container);
           break;
 
         default:

@@ -346,6 +346,7 @@ xim_wayland_input_context_new (xim_wayland_t *xw,
     wl_compositor_create_surface (xw->compositor);
   if (!input_context->surface)
     {
+      wl_text_input_destroy (input_context->text_input);
       free (input_context);
       return NULL;
     }
@@ -365,6 +366,9 @@ xim_wayland_input_context_free (xim_wayland_input_context_t *input_context)
 
   for (i = 0; i < SIZEOF (input_context->attrs); i++)
     free (input_context->attrs[i]);
+
+  wl_text_input_destroy (input_context->text_input);
+  wl_surface_destroy (input_context->surface);
 
   free (input_context);
 }
@@ -493,7 +497,7 @@ handle_xim_close_request (xim_wayland_t *xw,
     return false;
 
   wl_list_remove (&input_method->link);
-  free (input_method);
+  xim_wayland_input_method_free (input_method);
 
   return xcb_xim_close_reply (xw->xim,
                               requestor,
@@ -934,10 +938,11 @@ handle_xim_unset_ic_focus_request (xim_wayland_t *xw,
   return true;
 }
 
-typedef bool (* xim_wayland_xim_request_handler_t) (xim_wayland_t *xw,
-                                                    xcb_xim_generic_request_t *request,
-                                                    xcb_xim_transport_t *requestor,
-                                                    xcb_generic_error_t **error);
+typedef bool (* xim_wayland_xim_request_handler_t) (
+  xim_wayland_t *xw,
+  xcb_xim_generic_request_t *request,
+  xcb_xim_transport_t *requestor,
+  xcb_generic_error_t **error);
 
 static const struct
 {
@@ -1011,6 +1016,7 @@ handle_x_events (xim_wayland_t *xw)
                        error->error_code);
               free (error);
             }
+          free (event);
           return false;
 
         case XCB_XIM_DISPATCH_CONTINUE:
@@ -1042,9 +1048,11 @@ handle_x_events (xim_wayland_t *xw)
                            error->error_code);
                   free (error);
                 }
+              free (event);
               return false;
             }
         }
+      free (event);
     }
   return true;
 }
@@ -1098,11 +1106,11 @@ main_loop (xim_wayland_t *xw)
 }
 
 static void
-registry_handle_global (void               *data,
+registry_handle_global (void *data,
                         struct wl_registry *registry,
-                        uint32_t            id,
-                        const char         *interface,
-                        uint32_t            version)
+                        uint32_t id,
+                        const char *interface,
+                        uint32_t version)
 {
   xim_wayland_t *xw = data;
 
@@ -1118,9 +1126,9 @@ registry_handle_global (void               *data,
 }
 
 static void
-registry_handle_global_remove (void               *data,
+registry_handle_global_remove (void *data,
                                struct wl_registry *registry,
-                               uint32_t            name)
+                               uint32_t name)
 {
 }
 
@@ -1137,7 +1145,7 @@ print_usage (FILE *stream)
   fprintf (stream,
            "Usage: xim-wayland OPTIONS...\n"
            "where OPTIONS are:\n"
-           "  --locale, -l=LOCALE  Specify locale\n"
+           "  --locale, -l=LOCALE  Specify locale (default: C,en)\n"
            "  --help, -h           Show this help\n");
 }
 
@@ -1239,6 +1247,8 @@ main (int argc, char **argv)
   success = main_loop (&xw);
 
  out:
+  wl_registry_destroy (xw.registry);
+
   wl_list_for_each_safe (input_method, next,
                          &xw.input_method_list, link)
     {
