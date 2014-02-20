@@ -651,13 +651,13 @@ write_data (xcb_xim_server_connection_t *xim,
 }
 
 uint16_t
-xcb_xim_uint16 (xcb_xim_transport_t *transport, uint16_t value)
+xcb_xim_card16 (xcb_xim_transport_t *transport, uint16_t value)
 {
   return HO16 (transport, value);
 }
 
 uint32_t
-xcb_xim_uint32 (xcb_xim_transport_t *transport, uint32_t value)
+xcb_xim_card32 (xcb_xim_transport_t *transport, uint32_t value)
 {
   return HO32 (transport, value);
 }

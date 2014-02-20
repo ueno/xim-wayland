@@ -71,10 +71,10 @@ struct xcb_xim_transport_t
 typedef struct xcb_xim_transport_t xcb_xim_transport_t;
 
 uint16_t
-xcb_xim_uint16 (xcb_xim_transport_t *transport, uint16_t value);
+xcb_xim_card16 (xcb_xim_transport_t *transport, uint16_t value);
 
 uint32_t
-xcb_xim_uint32 (xcb_xim_transport_t *transport, uint32_t value);
+xcb_xim_card32 (xcb_xim_transport_t *transport, uint32_t value);
 
 /* Basic types used in requests.  */
 

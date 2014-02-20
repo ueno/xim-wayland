@@ -96,8 +96,6 @@ struct xim_wayland_t
 
 typedef struct xim_wayland_t xim_wayland_t;
 
-#define DEFAULT_INPUT_STYLE (XCB_XIM_PREEDIT_NOTHING | XCB_XIM_STATUS_NOTHING)
-
 static void
 handle_wayland_enter (void *data,
 		      struct wl_text_input *wl_text_input,
@@ -248,7 +246,8 @@ init_im_attributes (xim_wayland_input_method_t *input_method)
 {
   uint32_t value[] =
     {
-      DEFAULT_INPUT_STYLE
+      XCB_XIM_PREEDIT_CALLBACKS | XCB_XIM_STATUS_NOTHING,
+      XCB_XIM_PREEDIT_NOTHING | XCB_XIM_STATUS_NOTHING
     };
 
   input_method->specs[QUERY_INPUT_STYLE] =
@@ -301,7 +300,8 @@ init_ic_attributes (xim_wayland_input_context_t *input_context)
   input_context->attrs[INPUT_STYLE] =
     xcb_xim_attribute_card32_new (transport,
                                   INPUT_STYLE,
-                                  DEFAULT_INPUT_STYLE);
+                                  XCB_XIM_PREEDIT_NOTHING
+                                  | XCB_XIM_STATUS_NOTHING);
 
   input_context->attrs[FILTER_EVENTS] =
     xcb_xim_attribute_card32_new (transport,
@@ -488,7 +488,7 @@ handle_xim_close_request (xim_wayland_t *xw,
                           xcb_generic_error_t **error)
 {
   xcb_xim_close_request_t *_close = (xcb_xim_close_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _close->input_method_id);
   xim_wayland_input_method_t *input_method;
 
@@ -513,7 +513,7 @@ handle_xim_query_extension_request (xim_wayland_t *xw,
 {
   xcb_xim_query_extension_request_t *_query_extension =
     (xcb_xim_query_extension_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _query_extension->input_method_id);
 
   return xcb_xim_query_extension_reply (xw->xim,
@@ -534,7 +534,7 @@ handle_xim_encoding_negotiation_request (xim_wayland_t *xw,
   xcb_xim_encoding_negotiation_request_t *_encoding_negotiation =
     (xcb_xim_encoding_negotiation_request_t *) request;
   uint16_t input_method_id =
-    xcb_xim_uint16 (requestor,
+    xcb_xim_card16 (requestor,
                     _encoding_negotiation->input_method_id);
 
   /* FIXME: only support UTF-8 at the moment */
@@ -570,10 +570,10 @@ set_values (xcb_xim_transport_t *transport,
     {
       xcb_xim_attribute_t *attribute = iterator.data;
       xcb_xim_attribute_t *attribute_copy;
-      uint16_t attribute_id = xcb_xim_uint16 (transport,
+      uint16_t attribute_id = xcb_xim_card16 (transport,
                                               attribute->attribute_id);
       uint16_t attribute_byte_length =
-        4 + xcb_xim_uint16 (transport,
+        4 + xcb_xim_card16 (transport,
                             attribute->value_byte_length);
 
       if (attribute_id >= max_attribute_id)
@@ -598,7 +598,7 @@ handle_xim_set_im_values_request (xim_wayland_t *xw,
 {
   xcb_xim_set_im_values_request_t *_set_im_values =
     (xcb_xim_set_im_values_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _set_im_values->input_method_id);
   xim_wayland_input_method_t *input_method;
   xcb_xim_attribute_iterator_t iterator;
@@ -627,7 +627,7 @@ handle_xim_get_im_values_request (xim_wayland_t *xw,
 {
   xcb_xim_get_im_values_request_t *_get_im_values =
     (xcb_xim_get_im_values_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _get_im_values->input_method_id);
   xim_wayland_input_method_t *input_method;
   xcb_xim_attribute_id_iterator_t iterator;
@@ -649,7 +649,7 @@ handle_xim_get_im_values_request (xim_wayland_t *xw,
        xcb_xim_attribute_id_iterator_has_data (&iterator);
        xcb_xim_attribute_id_iterator_next (&iterator))
     {
-      uint16_t attribute_id = xcb_xim_uint16 (requestor,
+      uint16_t attribute_id = xcb_xim_card16 (requestor,
                                               *iterator.data);
 
       if (attribute_id >= LAST_IM_ATTRIBUTE)
@@ -684,7 +684,7 @@ handle_xim_create_ic_request (xim_wayland_t *xw,
 {
   xcb_xim_create_ic_request_t *_create_ic =
     (xcb_xim_create_ic_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _create_ic->input_method_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
@@ -745,9 +745,9 @@ handle_xim_destroy_ic_request (xim_wayland_t *xw,
 {
   xcb_xim_destroy_ic_request_t *_destroy_ic =
     (xcb_xim_destroy_ic_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _destroy_ic->input_method_id);
-  uint16_t input_context_id = xcb_xim_uint16 (requestor,
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
                                               _destroy_ic->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
@@ -778,9 +778,9 @@ handle_xim_set_ic_values_request (xim_wayland_t *xw,
 {
   xcb_xim_set_ic_values_request_t *_set_ic_values =
     (xcb_xim_set_ic_values_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _set_ic_values->input_method_id);
-  uint16_t input_context_id = xcb_xim_uint16 (requestor,
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
                                               _set_ic_values->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
@@ -815,9 +815,9 @@ handle_xim_get_ic_values_request (xim_wayland_t *xw,
 {
   xcb_xim_get_ic_values_request_t *_get_ic_values =
     (xcb_xim_get_ic_values_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _get_ic_values->input_method_id);
-  uint16_t input_context_id = xcb_xim_uint16 (requestor,
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
                                               _get_ic_values->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
@@ -844,7 +844,7 @@ handle_xim_get_ic_values_request (xim_wayland_t *xw,
        xcb_xim_attribute_id_iterator_has_data (&iterator);
        xcb_xim_attribute_id_iterator_next (&iterator))
     {
-      uint16_t attribute_id = xcb_xim_uint16 (requestor,
+      uint16_t attribute_id = xcb_xim_card16 (requestor,
                                               *iterator.data);
 
       if (attribute_id >= LAST_IC_ATTRIBUTE)
@@ -880,9 +880,9 @@ handle_xim_set_ic_focus_request (xim_wayland_t *xw,
 {
   xcb_xim_set_ic_focus_request_t *_set_ic_focus =
     (xcb_xim_set_ic_focus_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _set_ic_focus->input_method_id);
-  uint16_t input_context_id = xcb_xim_uint16 (requestor,
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
                                               _set_ic_focus->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
@@ -915,9 +915,9 @@ handle_xim_unset_ic_focus_request (xim_wayland_t *xw,
 {
   xcb_xim_unset_ic_focus_request_t *_unset_ic_focus =
     (xcb_xim_unset_ic_focus_request_t *) request;
-  uint16_t input_method_id = xcb_xim_uint16 (requestor,
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
                                              _unset_ic_focus->input_method_id);
-  uint16_t input_context_id = xcb_xim_uint16 (requestor,
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
                                               _unset_ic_focus->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
