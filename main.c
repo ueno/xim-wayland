@@ -62,6 +62,8 @@ struct xim_wayland_input_context_t
   xcb_xim_attribute_t *attrs[LAST_IC_ATTRIBUTE];
 
   xim_wayland_t *xw;
+  bool preedit_started;
+  uint16_t preedit_length;
 
   struct wl_list link;
 };
@@ -128,6 +130,78 @@ handle_wayland_input_panel_state (void *data,
 {
 }
 
+static bool
+update_preedit_string (xim_wayland_input_context_t *input_context,
+                       const char *text,
+                       xcb_generic_error_t **error)
+{
+  xcb_xim_transport_t *transport = input_context->input_method->transport;
+
+  if (*text == '\0')
+    {
+      if (!xcb_xim_preedit_draw (input_context->xw->xim,
+                                 transport,
+                                 input_context->input_method->id,
+                                 input_context->id,
+                                 strlen (text),
+                                 0,
+                                 input_context->preedit_length,
+                                 0,
+                                 strlen (text),
+                                 (const uint8_t *) text,
+                                 0,
+                                 NULL,
+                                 error))
+        return false;
+
+      input_context->preedit_length = 0;
+
+      if (!input_context->preedit_started)
+        {
+          if (!xcb_xim_preedit_done (input_context->xw->xim,
+                                     transport,
+                                     input_context->input_method->id,
+                                     input_context->id,
+                                     error))
+            return false;
+
+          input_context->preedit_started = false;
+        }
+    }
+  else
+    {
+      if (!input_context->preedit_started)
+        {
+          if (!xcb_xim_preedit_start (input_context->xw->xim,
+                                      transport,
+                                      input_context->input_method->id,
+                                      input_context->id,
+                                      error))
+            return false;
+
+          input_context->preedit_started = true;
+        }
+
+      if (!xcb_xim_preedit_draw (input_context->xw->xim,
+                                 transport,
+                                 input_context->input_method->id,
+                                 input_context->id,
+                                 strlen (text),
+                                 0,
+                                 input_context->preedit_length,
+                                 0,
+                                 strlen (text),
+                                 (const uint8_t *) text,
+                                 0,
+                                 NULL,
+                                 error))
+        return false;
+
+      input_context->preedit_length = strlen (text);
+    }
+  return true;
+}
+
 static void
 handle_wayland_preedit_string (void *data,
 			       struct wl_text_input *wl_text_input,
@@ -135,6 +209,31 @@ handle_wayland_preedit_string (void *data,
 			       const char *text,
 			       const char *commit)
 {
+  xim_wayland_input_context_t *input_context = data;
+  xcb_xim_transport_t *transport = input_context->input_method->transport;
+  uint32_t input_style =
+    xcb_xim_card32 (transport,
+                    *(uint32_t *) (input_context->attrs[INPUT_STYLE] + 1));
+
+  if ((input_style & XCB_XIM_PREEDIT_CALLBACKS) != 0)
+    {
+      xcb_generic_error_t *error;
+
+      error = NULL;
+      if (!update_preedit_string (input_context, text, &error))
+        {
+          if (error)
+            {
+              fprintf (stderr, "can't render preedit: %i\n",
+                       error->error_code);
+              free (error);
+            }
+          else
+            fprintf (stderr, "can't render preedit\n");
+        }
+    }
+  else
+    fprintf (stderr, "preedit callbacks not supported by this client\n");
 }
 
 static void
@@ -163,6 +262,19 @@ handle_wayland_commit_string (void *data,
   xcb_generic_error_t *error;
 
   error = NULL;
+  if (!update_preedit_string (input_context, "", &error))
+    {
+      if (error)
+        {
+          fprintf (stderr, "can't clear preedit: %i\n",
+                   error->error_code);
+          free (error);
+        }
+      else
+        fprintf (stderr, "can't clear preedit\n");
+    }
+
+  error = NULL;
   if (!xcb_xim_commit (input_context->xw->xim,
                        input_context->input_method->transport,
                        input_context->input_method->id,
@@ -179,6 +291,8 @@ handle_wayland_commit_string (void *data,
                    error->error_code);
           free (error);
         }
+      else
+        fprintf (stderr, "can't commit\n");
     }
 }
 
