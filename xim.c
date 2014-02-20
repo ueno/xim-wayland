@@ -644,7 +644,7 @@ write_data (xcb_xim_server_connection_t *xim,
                   (const char *) &event);
   xcb_flush (xim->connection);
 
-  hexdump (" <", data, length);
+  hexdump ("< ", data, length);
 
   return true;
 }
