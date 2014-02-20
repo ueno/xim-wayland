@@ -42,6 +42,8 @@ enum
     FILTER_EVENTS,
     CLIENT_WINDOW,
     FOCUS_WINDOW,
+    PREEDIT_ATTRIBUTES,
+    STATUS_ATTRIBUTES,
     LAST_IC_ATTRIBUTE
   };
 
@@ -246,6 +248,7 @@ init_im_attributes (xim_wayland_input_method_t *input_method)
 {
   uint32_t value[] =
     {
+      XCB_XIM_PREEDIT_CALLBACKS | XCB_XIM_STATUS_CALLBACKS,
       XCB_XIM_PREEDIT_CALLBACKS | XCB_XIM_STATUS_NOTHING,
       XCB_XIM_PREEDIT_NOTHING | XCB_XIM_STATUS_NOTHING
     };
@@ -290,6 +293,20 @@ init_im_attributes (xim_wayland_input_method_t *input_method)
                                 XCB_XIM_TYPE_WINDOW,
                                 strlen ("focusWindow"),
                                 "focusWindow");
+
+  input_method->ic_specs[PREEDIT_ATTRIBUTES] =
+    xcb_xim_attribute_spec_new (input_method->transport,
+                                PREEDIT_ATTRIBUTES,
+                                XCB_XIM_TYPE_NEST,
+                                strlen ("preeditAttributes"),
+                                "preeditAttributes");
+
+  input_method->ic_specs[STATUS_ATTRIBUTES] =
+    xcb_xim_attribute_spec_new (input_method->transport,
+                                STATUS_ATTRIBUTES,
+                                XCB_XIM_TYPE_NEST,
+                                strlen ("statusAttributes"),
+                                "statusAttributes");
 }
 
 static void
@@ -300,8 +317,8 @@ init_ic_attributes (xim_wayland_input_context_t *input_context)
   input_context->attrs[INPUT_STYLE] =
     xcb_xim_attribute_card32_new (transport,
                                   INPUT_STYLE,
-                                  XCB_XIM_PREEDIT_NOTHING
-                                  | XCB_XIM_STATUS_NOTHING);
+                                  XCB_XIM_PREEDIT_CALLBACKS
+                                  | XCB_XIM_STATUS_CALLBACKS);
 
   input_context->attrs[FILTER_EVENTS] =
     xcb_xim_attribute_card32_new (transport,
