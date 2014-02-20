@@ -53,6 +53,7 @@ struct xim_wayland_input_context_t
   struct wl_text_input *text_input;
   xim_wayland_input_method_t *input_method;
   struct wl_surface *surface;
+  uint32_t serial;
 
   xcb_xim_attribute_t *attrs[LAST_IC_ATTRIBUTE];
 
@@ -96,6 +97,65 @@ typedef struct xim_wayland_t xim_wayland_t;
 #define DEFAULT_INPUT_STYLE (XCB_XIM_PREEDIT_NOTHING | XCB_XIM_STATUS_NOTHING)
 
 static void
+handle_wayland_enter (void *data,
+		      struct wl_text_input *wl_text_input,
+		      struct wl_surface *surface)
+{
+  xim_wayland_input_context_t *input_context;
+
+  input_context = wl_text_input_get_user_data (wl_text_input);
+  if (!input_context)
+    return;
+
+  wl_text_input_commit_state (wl_text_input, ++input_context->serial);
+}
+
+static void
+handle_wayland_leave (void *data,
+		      struct wl_text_input *wl_text_input)
+{
+}
+
+static void
+handle_wayland_modifiers_map (void *data,
+			      struct wl_text_input *wl_text_input,
+			      struct wl_array *map)
+{
+}
+
+static void
+handle_wayland_input_panel_state (void *data,
+				  struct wl_text_input *wl_text_input,
+				  uint32_t state)
+{
+}
+
+static void
+handle_wayland_preedit_string (void *data,
+			       struct wl_text_input *wl_text_input,
+			       uint32_t serial,
+			       const char *text,
+			       const char *commit)
+{
+}
+
+static void
+handle_wayland_preedit_styling (void *data,
+				struct wl_text_input *wl_text_input,
+				uint32_t index,
+				uint32_t length,
+				uint32_t style)
+{
+}
+
+static void
+handle_wayland_preedit_cursor (void *data,
+			       struct wl_text_input *wl_text_input,
+			       int32_t index)
+{
+}
+
+static void
 handle_wayland_commit_string (void *data,
                               struct wl_text_input *wl_text_input,
                               uint32_t serial,
@@ -129,21 +189,64 @@ handle_wayland_commit_string (void *data,
     }
 }
 
+static void
+handle_wayland_cursor_position (void *data,
+				struct wl_text_input *wl_text_input,
+				int32_t index,
+				int32_t anchor)
+{
+}
+
+static void
+handle_wayland_delete_surrounding_text (void *data,
+					struct wl_text_input *wl_text_input,
+					int32_t index,
+					uint32_t length)
+{
+}
+
+static void
+handle_wayland_keysym (void *data,
+		       struct wl_text_input *wl_text_input,
+		       uint32_t serial,
+		       uint32_t time,
+		       uint32_t sym,
+		       uint32_t state,
+		       uint32_t modifiers)
+{
+}
+
+static void
+handle_wayland_language (void *data,
+			 struct wl_text_input *wl_text_input,
+			 uint32_t serial,
+			 const char *language)
+{
+}
+
+static void
+handle_wayland_text_direction (void *data,
+			       struct wl_text_input *wl_text_input,
+			       uint32_t serial,
+			       uint32_t direction)
+{
+}
+
 static const struct wl_text_input_listener text_input_listener =
   {
-    NULL,                       /* enter */
-    NULL,                       /* leave */
-    NULL,                       /* modifiers_map */
-    NULL,                       /* input_panel_state */
-    NULL,                       /* preedit_string */
-    NULL,                       /* preedit_styling */
-    NULL,                       /* preedit_cursor */
+    handle_wayland_enter,
+    handle_wayland_leave,
+    handle_wayland_modifiers_map,
+    handle_wayland_input_panel_state,
+    handle_wayland_preedit_string,
+    handle_wayland_preedit_styling,
+    handle_wayland_preedit_cursor,
     handle_wayland_commit_string,
-    NULL,                       /* cursor_position */
-    NULL,                       /* delete_surrounding_text */
-    NULL,                       /* keysym */
-    NULL,                       /* language */
-    NULL                        /* text_direction */
+    handle_wayland_cursor_position,
+    handle_wayland_delete_surrounding_text,
+    handle_wayland_keysym,
+    handle_wayland_language,
+    handle_wayland_text_direction,
   };
 
 static void
@@ -801,6 +904,8 @@ handle_xim_set_ic_focus_request (xim_wayland_t *xw,
   wl_text_input_activate (input_context->text_input,
                           xw->seat,
                           input_context->surface);
+  wl_display_flush (xw->display);
+
   return true;
 }
 
@@ -810,12 +915,12 @@ handle_xim_unset_ic_focus_request (xim_wayland_t *xw,
                                    xcb_xim_transport_t *requestor,
                                    xcb_generic_error_t **error)
 {
-  xcb_xim_set_ic_focus_request_t *_set_ic_focus =
-    (xcb_xim_set_ic_focus_request_t *) request;
+  xcb_xim_unset_ic_focus_request_t *_unset_ic_focus =
+    (xcb_xim_unset_ic_focus_request_t *) request;
   uint16_t input_method_id = xcb_xim_uint16 (requestor,
-                                             _set_ic_focus->input_method_id);
+                                             _unset_ic_focus->input_method_id);
   uint16_t input_context_id = xcb_xim_uint16 (requestor,
-                                              _set_ic_focus->input_context_id);
+                                              _unset_ic_focus->input_context_id);
   xim_wayland_input_method_t *input_method;
   xim_wayland_input_context_t *input_context;
 
@@ -857,7 +962,7 @@ static const struct
     { XCB_XIM_SET_IC_VALUES, handle_xim_set_ic_values_request },
     { XCB_XIM_GET_IC_VALUES, handle_xim_get_ic_values_request },
     { XCB_XIM_SET_IC_FOCUS, handle_xim_set_ic_focus_request },
-    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request },
+    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request }
   };
 
 static bool
@@ -882,11 +987,7 @@ handle_wayland_events (xim_wayland_t *xw)
 {
   int ret;
 
-  ret = wl_display_flush (xw->display);
-  if (ret < 0)
-    return false;
-
-  ret = wl_display_dispatch_pending (xw->display);
+  ret = wl_display_dispatch (xw->display);
   if (ret < 0)
     return false;
 
@@ -962,10 +1063,10 @@ main_loop (xim_wayland_t *xw)
   memset (fds, 0, sizeof (fds));
 
   fds[0].fd = wl_display_get_fd (xw->display);
-  fds[0].events = POLLIN | POLLOUT | POLLERR | POLLHUP;
+  fds[0].events = POLLIN | POLLERR | POLLHUP;
 
   fds[1].fd = xcb_get_file_descriptor (xw->connection);
-  fds[1].events = POLLIN | POLLERR | POLLHUP;
+  fds[1].events = POLLIN | POLLOUT | POLLERR | POLLHUP;
 
   while (true)
     {
