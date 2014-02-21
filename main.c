@@ -354,6 +354,29 @@ handle_wayland_preedit_cursor (void *data,
                                struct wl_text_input *wl_text_input,
                                int32_t index)
 {
+  xim_wayland_input_context_t *input_context = data;
+  xcb_xim_transport_t *transport = input_context->input_method->transport;
+  xcb_generic_error_t *error;
+
+  error = NULL;
+  if (!xcb_xim_preedit_caret (input_context->xw->xim,
+                              transport,
+                              input_context->input_method->id,
+                              input_context->id,
+                              index,
+                              XCB_XIM_CARET_DIRECTION_ABSOLUTE_POSITION,
+                              XCB_XIM_CARET_STYLE_PRIMARY,
+                              &error))
+    {
+      if (error)
+        {
+          fprintf (stderr, "can't set caret position: %i\n",
+                   error->error_code);
+          free (error);
+        }
+      else
+        fprintf (stderr, "can't set caret position\n");
+    }
 }
 
 static void
@@ -1160,6 +1183,41 @@ handle_xim_unset_ic_focus_request (xim_wayland_t *xw,
   return true;
 }
 
+static bool
+handle_xim_preedit_caret_reply (xim_wayland_t *xw,
+                                xcb_xim_generic_request_t *request,
+                                xcb_xim_transport_t *requestor,
+                                xcb_generic_error_t **error)
+{
+  xcb_xim_preedit_caret_reply_t *_preedit_caret =
+    (xcb_xim_preedit_caret_reply_t *) request;
+  uint16_t input_method_id = xcb_xim_card16 (requestor,
+                                             _preedit_caret->input_method_id);
+  uint16_t input_context_id = xcb_xim_card16 (requestor,
+                                              _preedit_caret->input_context_id);
+  uint32_t position = xcb_xim_card32 (requestor,
+                                      _preedit_caret->position);
+  xim_wayland_input_method_t *input_method;
+  xim_wayland_input_context_t *input_context;
+
+  input_method = find_input_method (xw, requestor, input_method_id);
+  if (!input_method)
+    return false;
+
+  input_context = find_input_context (input_method, input_context_id);
+  if (!input_context)
+    return false;
+
+  if (!input_context->text_input)
+    return false;
+
+  if (position > input_context->preedit_length)
+    return false;
+
+  input_context->preedit_caret = position;
+  return true;
+}
+
 typedef bool (* xim_wayland_xim_request_handler_t) (
   xim_wayland_t *xw,
   xcb_xim_generic_request_t *request,
@@ -1183,7 +1241,8 @@ static const struct
     { XCB_XIM_SET_IC_VALUES, handle_xim_set_ic_values_request },
     { XCB_XIM_GET_IC_VALUES, handle_xim_get_ic_values_request },
     { XCB_XIM_SET_IC_FOCUS, handle_xim_set_ic_focus_request },
-    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request }
+    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request },
+    { XCB_XIM_PREEDIT_CARET_REPLY, handle_xim_preedit_caret_reply }
     /* Note that we intentionally ignore XIM_FORWARD_EVENT request,
        because key press/release events are directly delivered to
        input method under Wayland.  */

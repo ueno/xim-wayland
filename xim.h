@@ -181,6 +181,29 @@ typedef struct xcb_xim_str_conv_text_t xcb_xim_str_conv_text_t;
 
 typedef enum
   {
+    XCB_XIM_CARET_DIRECTION_FORWARD_CHAR,
+    XCB_XIM_CARET_DIRECTION_BACKWARD_CHAR,
+    XCB_XIM_CARET_DIRECTION_FORWARD_WORD,
+    XCB_XIM_CARET_DIRECTION_BACKWARD_WORD,
+    XCB_XIM_CARET_DIRECTION_CARET_UP,
+    XCB_XIM_CARET_DIRECTION_CARET_DOWN,
+    XCB_XIM_CARET_DIRECTION_NEXT_LINE,
+    XCB_XIM_CARET_DIRECTION_PREVIOUS_LINE,
+    XCB_XIM_CARET_DIRECTION_LINE_START,
+    XCB_XIM_CARET_DIRECTION_LINE_END,
+    XCB_XIM_CARET_DIRECTION_ABSOLUTE_POSITION,
+    XCB_XIM_CARET_DIRECTION_DONT_CHANGE
+  } xcb_xim_caret_direction_t;
+
+typedef enum
+  {
+    XCB_XIM_CARET_STYLE_INVISIBLE,
+    XCB_XIM_CARET_STYLE_PRIMARY,
+    XCB_XIM_CARET_STYLE_SECONDARY
+  } xcb_xim_caret_style_t;
+
+typedef enum
+  {
     XCB_XIM_FEEDBACK_REVERSE = 0x1,
     XCB_XIM_FEEDBACK_UNDERLINE = 0x2,
     XCB_XIM_FEEDBACK_HIGHLIGHT = 0x4,
@@ -891,7 +914,7 @@ xcb_xim_str_conversion (xcb_xim_server_connection_t *xim,
                         uint16_t input_method_id,
                         uint16_t input_context_id,
                         uint16_t position,
-                        uint32_t direction,
+                        xcb_xim_caret_direction_t direction,
                         uint16_t factor,
                         uint16_t operation,
                         int16_t byte_length,
@@ -948,8 +971,8 @@ xcb_xim_preedit_caret (xcb_xim_server_connection_t *xim,
                        uint16_t input_method_id,
                        uint16_t input_context_id,
                        int32_t position,
-                       uint32_t direction,
-                       uint32_t style,
+                       xcb_xim_caret_direction_t direction,
+                       xcb_xim_caret_style_t style,
                        xcb_generic_error_t **error);
 
 struct xcb_xim_preedit_caret_reply_t
