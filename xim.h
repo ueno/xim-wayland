@@ -28,15 +28,17 @@
 
    Note:
 
-   - All structs (e.g. xcb_xim_open_request_t) are in client byte
-     order, while (non-struct) function arguments
-     (e.g. xcb_xim_open_reply) are in host byte order.  To
-     access an integer field of a struct, you may need to convert byte
-     order according to ENDIAN member of xcb_xim_transport_t.
+   - All structs that represent wire format
+     (e.g. xcb_xim_*_{request,reply,attribute}_t) are in client byte
+     order, while non-struct function arguments are in host byte
+     order.  To access an integer field of a struct, you may need to
+     convert byte order according to ENDIAN member of
+     xcb_xim_transport_t.
 
-   - We assume the fact that *_request_t structs are packed in (at
-     most) 4-byte alignment.  Don't add fields that needs larger space
-     (e.g. pointer or other structs).
+   - All structs that represent wire format do not have padding at the
+     end.  For example, xcb_xim_*_request_t are 4-byte aligned and do
+     not have fields that needs larger space (e.g. pointer or other
+     structs).
 
    - All data (including variable length fields) associated with a
      struct is allocated within the same contiguous memory of the
