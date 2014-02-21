@@ -90,22 +90,22 @@
    : le32toh ((n)))
 
 #define PACK8(t,d,n)                            \
-  *(uint8_t *) (d) = (n), (d)++
+  (*(uint8_t *) (d) = (n), (d)++)
 
 #define PACK16(t,d,n)                           \
-  *(uint16_t *) (d) = NO16((t),(n)), (d) += 2
+  (*(uint16_t *) (d) = NO16((t),(n)), (d) += 2)
 
 #define PACK32(t,d,n)                           \
-  *(uint32_t *) (d) = NO32((t),(n)), (d) += 4
+  (*(uint32_t *) (d) = NO32((t),(n)), (d) += 4)
 
 #define UNPACK8(t,d,n)                          \
-  *(n) = *(uint8_t *) (d), (d)++
+  (*(n) = *(uint8_t *) (d), (d)++)
 
 #define UNPACK16(t,d,n)                         \
-  *(n) = HO16((t),*(uint16_t *) (d)), (d) += 2
+  (*(n) = HO16((t),*(uint16_t *) (d)), (d) += 2)
 
 #define UNPACK32(t,d,n)                         \
-  *(n) = HO32((t),*(uint32_t *) (d)), (d) += 4
+  (*(n) = HO32((t),*(uint32_t *) (d)), (d) += 4)
 
 #define SIZEOF(x) (sizeof (x) / sizeof(*x))
 
