@@ -1212,9 +1212,8 @@ handle_xim_preedit_caret_reply (xim_wayland_t *xw,
     return false;
 
   if (position > input_context->preedit_length)
-    return false;
+    input_context->preedit_caret = position;
 
-  input_context->preedit_caret = position;
   return true;
 }
 
