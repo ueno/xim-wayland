@@ -37,8 +37,8 @@
 
    - All structs that represent wire format do not have padding at the
      end.  For example, xcb_xim_*_request_t are 4-byte aligned and do
-     not have fields that needs larger space (e.g. pointer or other
-     structs).
+     not have fields that require storage larger than 4-byte
+     (e.g. pointer or other structs).
 
    - All data (including variable length fields) associated with a
      struct is allocated within the same contiguous memory of the
@@ -183,25 +183,25 @@ typedef struct xcb_xim_str_conv_text_t xcb_xim_str_conv_text_t;
 
 typedef enum
   {
-    XCB_XIM_CARET_DIRECTION_FORWARD_CHAR,
-    XCB_XIM_CARET_DIRECTION_BACKWARD_CHAR,
-    XCB_XIM_CARET_DIRECTION_FORWARD_WORD,
-    XCB_XIM_CARET_DIRECTION_BACKWARD_WORD,
-    XCB_XIM_CARET_DIRECTION_CARET_UP,
-    XCB_XIM_CARET_DIRECTION_CARET_DOWN,
-    XCB_XIM_CARET_DIRECTION_NEXT_LINE,
-    XCB_XIM_CARET_DIRECTION_PREVIOUS_LINE,
-    XCB_XIM_CARET_DIRECTION_LINE_START,
-    XCB_XIM_CARET_DIRECTION_LINE_END,
-    XCB_XIM_CARET_DIRECTION_ABSOLUTE_POSITION,
-    XCB_XIM_CARET_DIRECTION_DONT_CHANGE
+    XCB_XIM_CARET_DIRECTION_FORWARD_CHAR = 0,
+    XCB_XIM_CARET_DIRECTION_BACKWARD_CHAR = 1,
+    XCB_XIM_CARET_DIRECTION_FORWARD_WORD = 2,
+    XCB_XIM_CARET_DIRECTION_BACKWARD_WORD = 3,
+    XCB_XIM_CARET_DIRECTION_CARET_UP = 4,
+    XCB_XIM_CARET_DIRECTION_CARET_DOWN = 5,
+    XCB_XIM_CARET_DIRECTION_NEXT_LINE = 6,
+    XCB_XIM_CARET_DIRECTION_PREVIOUS_LINE = 7,
+    XCB_XIM_CARET_DIRECTION_LINE_START = 8,
+    XCB_XIM_CARET_DIRECTION_LINE_END = 9,
+    XCB_XIM_CARET_DIRECTION_ABSOLUTE_POSITION = 10,
+    XCB_XIM_CARET_DIRECTION_DONT_CHANGE = 11
   } xcb_xim_caret_direction_t;
 
 typedef enum
   {
-    XCB_XIM_CARET_STYLE_INVISIBLE,
-    XCB_XIM_CARET_STYLE_PRIMARY,
-    XCB_XIM_CARET_STYLE_SECONDARY
+    XCB_XIM_CARET_STYLE_INVISIBLE = 0,
+    XCB_XIM_CARET_STYLE_PRIMARY = 1,
+    XCB_XIM_CARET_STYLE_SECONDARY = 2
   } xcb_xim_caret_style_t;
 
 typedef enum
@@ -431,7 +431,8 @@ struct xcb_xim_open_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint8_t locale_length;               /* 1: n */
+  uint8_t locale_length;        /* 1: n */
+                                /* n: locale */
 };
 
 typedef struct xcb_xim_open_request_t xcb_xim_open_request_t;
@@ -456,7 +457,7 @@ struct xcb_xim_close_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;
+  uint16_t input_method_id;     /* 2: input_method_id */
 };
 
 typedef struct xcb_xim_close_request_t xcb_xim_close_request_t;
@@ -524,10 +525,10 @@ struct xcb_xim_query_extension_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;     /* 2: input_method_id */
+  uint16_t input_method_id;        /* 2: input_method_id */
   uint16_t extensions_byte_length; /* 2: n */
-                                /* n: LISTofSTR */
-                                /* p: pad(n) */
+                                   /* n: LISTofSTR */
+                                   /* p: pad(n) */
 };
 
 typedef struct xcb_xim_query_extension_request_t
@@ -555,13 +556,13 @@ struct xcb_xim_encoding_negotiation_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;     /* 2: input_method_id */
+  uint16_t input_method_id;       /* 2: input_method_id */
   uint16_t encodings_byte_length; /* 2: n */
-                                /* n: LISTofSTR */
-                                /* p: pad(n) */
-                                /* 2: m */
-                                /* 2: pad(m) */
-                                /* m: LISTofENCODINGINFO */
+                                  /* n: LISTofSTR */
+                                  /* p: pad(n) */
+                                  /* 2: m */
+                                  /* 2: pad(m) */
+                                  /* m: LISTofENCODINGINFO */
 };
 
 typedef struct xcb_xim_encoding_negotiation_request_t
@@ -589,9 +590,9 @@ struct xcb_xim_set_im_values_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;     /* 2: input_method_id */
+  uint16_t input_method_id;        /* 2: input_method_id */
   uint16_t attributes_byte_length; /* 2: n */
-                                /* n: LISTofXIMATTRIBUTE */
+                                   /* n: LISTofXIMATTRIBUTE */
 };
 
 typedef struct xcb_xim_set_im_values_request_t xcb_xim_set_im_values_request_t;
@@ -620,10 +621,10 @@ struct xcb_xim_get_im_values_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;     /* 2: input_method_id */
+  uint16_t input_method_id;        /* 2: input_method_id */
   uint16_t attributes_byte_length; /* 2: n */
-                                /* n: LISTofCARD16 */
-                                /* p: pad(n) */
+                                   /* n: LISTofCARD16 */
+                                   /* p: pad(n) */
 };
 
 typedef struct xcb_xim_get_im_values_request_t xcb_xim_get_im_values_request_t;
@@ -650,9 +651,9 @@ struct xcb_xim_create_ic_request_t
   uint8_t minor_opcode;
   uint16_t length;
 
-  uint16_t input_method_id;     /* 2: input_method_id */
+  uint16_t input_method_id;        /* 2: input_method_id */
   uint16_t attributes_byte_length; /* 2: n */
-                                /* n: LISTofXICATTRIBUTE */
+                                   /* n: LISTofXICATTRIBUTE */
 };
 
 typedef struct xcb_xim_create_ic_request_t xcb_xim_create_ic_request_t;
@@ -705,7 +706,7 @@ struct xcb_xim_set_ic_values_request_t
   uint16_t input_context_id;       /* 2: input_context_id */
   uint16_t attributes_byte_length; /* 2: n */
   uint16_t pad;                    /* 2: padding */
-                                /* n: LISTofXICATTRIBUTE */
+                                   /* n: LISTofXICATTRIBUTE */
 };
 
 typedef struct xcb_xim_set_ic_values_request_t xcb_xim_set_ic_values_request_t;
@@ -734,9 +735,9 @@ struct xcb_xim_get_ic_values_request_t
   uint16_t input_method_id;        /* 2: input_method_id */
   uint16_t input_context_id;       /* 2: input_context_id */
   uint16_t attributes_byte_length; /* 2: n */
-                                /* Oops, why no padding here...  */
-                                /* n: LISTofCARD16 */
-                                /* p: pad(2+n) */
+                                   /* Oops, why no padding here...  */
+                                   /* n: LISTofCARD16 */
+                                   /* p: pad(2+n) */
 };
 
 typedef struct xcb_xim_get_ic_values_request_t xcb_xim_get_ic_values_request_t;
