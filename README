@@ -2,8 +2,8 @@ xim-wayland
 ===========
 
 xim-wayland is a protocol translator between XIM and wl_text_input
-protocol.  The code is self-contained, including an XCB binding of XIM
-server protocol, and doesn't require any extra library except
+protocol.  The code is mostly self-contained, including an XCB binding
+of XIM server protocol, and doesn't require any extra library except
 libwayland-client and libxcb.
 
 Usage
@@ -13,3 +13,7 @@ Under weston session with XWayland enabled, do:
 
 $ ./xim-wayland --locale=en &
 $ LANG=en_US.utf8 XMODIFIERS=@im=wayland xterm
+
+Videos:
+http://du-a.org/~ueno/junk/xim-wayland.webm (without client preedit support)
+http://du-a.org/~ueno/junk/xim-wayland-gedit-xim.webm
