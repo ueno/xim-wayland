@@ -327,12 +327,12 @@ handle_wayland_preedit_styling (void *data,
       feedback = XCB_XIM_FEEDBACK_PRIMARY;
       break;
 
-    case WL_TEXT_INPUT_PREEDIT_STYLE_SELECTION:
-      feedback = XCB_XIM_FEEDBACK_SECONDARY;
-
     case WL_TEXT_INPUT_PREEDIT_STYLE_INACTIVE:
-      feedback = XCB_XIM_FEEDBACK_TERTIARY;
+      feedback = XCB_XIM_FEEDBACK_SECONDARY;
       break;
+
+    case WL_TEXT_INPUT_PREEDIT_STYLE_SELECTION:
+      feedback = XCB_XIM_FEEDBACK_REVERSE;
 
     default:
       return;
