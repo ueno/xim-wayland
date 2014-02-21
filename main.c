@@ -1352,7 +1352,7 @@ main_loop (xim_wayland_t *xw)
   fds[0].events = POLLIN | POLLERR | POLLHUP;
 
   fds[1].fd = xcb_get_file_descriptor (xw->connection);
-  fds[1].events = POLLIN | POLLOUT | POLLERR | POLLHUP;
+  fds[1].events = POLLIN | POLLERR | POLLHUP;
 
   while (true)
     {
