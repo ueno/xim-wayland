@@ -850,20 +850,6 @@ handle_xim_create_ic_request (xim_wayland_t *xw,
       return false;
     }
 
-  success = xcb_xim_set_event_mask (xw->xim,
-                                    requestor,
-                                    input_method_id,
-                                    input_context->id,
-                                    XCB_EVENT_MASK_KEY_PRESS
-                                    | XCB_EVENT_MASK_KEY_RELEASE,
-                                    0,
-                                    error);
-  if (!success)
-    {
-      xim_wayland_input_context_free (input_context);
-      return false;
-    }
-
   wl_list_insert (&input_method->input_context_list, &input_context->link);
   return success;
 }
@@ -1069,42 +1055,6 @@ handle_xim_unset_ic_focus_request (xim_wayland_t *xw,
   return true;
 }
 
-static bool
-handle_xim_forward_event_request (xim_wayland_t *xw,
-                                  xcb_xim_generic_request_t *request,
-                                  xcb_xim_transport_t *requestor,
-                                  xcb_generic_error_t **error)
-{
-  xcb_xim_forward_event_request_t *_forward_event =
-    (xcb_xim_forward_event_request_t *) request;
-  uint16_t input_method_id = xcb_xim_card16 (requestor,
-                                             _forward_event->input_method_id);
-  uint16_t input_context_id = xcb_xim_card16 (requestor,
-                                              _forward_event->input_context_id);
-  uint32_t serial = xcb_xim_forward_event_get_serial (_forward_event);
-  xim_wayland_input_method_t *input_method;
-  xim_wayland_input_context_t *input_context;
-  xcb_generic_event_t *event;
-
-  input_method = find_input_method (xw, requestor, input_method_id);
-  if (!input_method)
-    return false;
-
-  input_context = find_input_context (input_method, input_context_id);
-  if (!input_context)
-    return false;
-
-  event = xcb_xim_forward_event_get_event (_forward_event);
-  return xcb_xim_forward_event (xw->xim,
-                                requestor,
-                                input_method_id,
-                                input_context_id,
-                                0,
-                                serial,
-                                event,
-                                error);
-}
-
 typedef bool (* xim_wayland_xim_request_handler_t) (
   xim_wayland_t *xw,
   xcb_xim_generic_request_t *request,
@@ -1128,8 +1078,10 @@ static const struct
     { XCB_XIM_SET_IC_VALUES, handle_xim_set_ic_values_request },
     { XCB_XIM_GET_IC_VALUES, handle_xim_get_ic_values_request },
     { XCB_XIM_SET_IC_FOCUS, handle_xim_set_ic_focus_request },
-    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request },
-    { XCB_XIM_FORWARD_EVENT, handle_xim_forward_event_request }
+    { XCB_XIM_UNSET_IC_FOCUS, handle_xim_unset_ic_focus_request }
+    /* Note that we intentionally ignore XIM_FORWARD_EVENT request,
+       because key press/release events are directly delivered to
+       input method under Wayland.  */
   };
 
 static bool
