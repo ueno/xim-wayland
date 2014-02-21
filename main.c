@@ -51,6 +51,16 @@ typedef struct xim_wayland_input_context_t xim_wayland_input_context_t;
 typedef struct xim_wayland_input_method_t xim_wayland_input_method_t;
 typedef struct xim_wayland_t xim_wayland_t;
 
+struct xim_wayland_styling_t
+{
+  uint32_t index;
+  uint32_t length;
+  xcb_xim_feedback_t feedback;
+  struct wl_list link;
+};
+
+typedef struct xim_wayland_styling_t xim_wayland_styling_t;
+
 struct xim_wayland_input_context_t
 {
   uint16_t id;
@@ -62,8 +72,13 @@ struct xim_wayland_input_context_t
   xcb_xim_attribute_t *attrs[LAST_IC_ATTRIBUTE];
 
   xim_wayland_t *xw;
+
   bool preedit_started;
+
+  char *preedit_string;
   uint16_t preedit_length;
+  int32_t preedit_caret;
+  struct wl_list preedit_styling_list;
 
   struct wl_list link;
 };
@@ -102,8 +117,8 @@ typedef struct xim_wayland_t xim_wayland_t;
 
 static void
 handle_wayland_enter (void *data,
-		      struct wl_text_input *wl_text_input,
-		      struct wl_surface *surface)
+                      struct wl_text_input *wl_text_input,
+                      struct wl_surface *surface)
 {
   xim_wayland_input_context_t *input_context = data;
 
@@ -112,22 +127,39 @@ handle_wayland_enter (void *data,
 
 static void
 handle_wayland_leave (void *data,
-		      struct wl_text_input *wl_text_input)
+                      struct wl_text_input *wl_text_input)
 {
 }
 
 static void
 handle_wayland_modifiers_map (void *data,
-			      struct wl_text_input *wl_text_input,
-			      struct wl_array *map)
+                              struct wl_text_input *wl_text_input,
+                              struct wl_array *map)
 {
 }
 
 static void
 handle_wayland_input_panel_state (void *data,
-				  struct wl_text_input *wl_text_input,
-				  uint32_t state)
+                                  struct wl_text_input *wl_text_input,
+                                  uint32_t state)
 {
+}
+
+static void
+reset_preedit (xim_wayland_input_context_t *input_context)
+{
+  xim_wayland_styling_t *preedit_styling, *next;
+
+  wl_list_for_each_safe (preedit_styling, next,
+                         &input_context->preedit_styling_list, link)
+    {
+      wl_list_remove (&preedit_styling->link);
+      free (preedit_styling);
+    }
+
+  free (input_context->preedit_string);
+  input_context->preedit_string = NULL;
+  input_context->preedit_length = 0;
 }
 
 static bool
@@ -152,9 +184,10 @@ update_preedit_string (xim_wayland_input_context_t *input_context,
                                  0,
                                  NULL,
                                  error))
-        return false;
-
-      input_context->preedit_length = 0;
+        {
+          reset_preedit (input_context);
+          return false;
+        }
 
       if (!input_context->preedit_started)
         {
@@ -163,13 +196,22 @@ update_preedit_string (xim_wayland_input_context_t *input_context,
                                      input_context->input_method->id,
                                      input_context->id,
                                      error))
-            return false;
+            {
+              reset_preedit (input_context);
+              return false;
+            }
 
           input_context->preedit_started = false;
         }
+
+      reset_preedit (input_context);
     }
   else
     {
+      xim_wayland_styling_t *preedit_styling;
+      xcb_xim_feedback_t *feedbacks;
+      size_t length, i;
+
       if (!input_context->preedit_started)
         {
           if (!xcb_xim_preedit_start (input_context->xw->xim,
@@ -177,9 +219,28 @@ update_preedit_string (xim_wayland_input_context_t *input_context,
                                       input_context->input_method->id,
                                       input_context->id,
                                       error))
-            return false;
+            {
+              reset_preedit (input_context);
+              return false;
+            }
 
           input_context->preedit_started = true;
+        }
+
+      length = strlen (text);
+
+      feedbacks = calloc (sizeof (xcb_xim_feedback_t), length);
+      for (i = 0; i < length; i++)
+        feedbacks[i] = XCB_XIM_FEEDBACK_UNDERLINE;
+
+      wl_list_for_each (preedit_styling,
+                        &input_context->preedit_styling_list, link)
+        {
+          if (preedit_styling->index + preedit_styling->length > length)
+            continue;
+
+          for (i = 0; i < preedit_styling->length; i++)
+            feedbacks[i + preedit_styling->index] |= preedit_styling->feedback;
         }
 
       if (!xcb_xim_preedit_draw (input_context->xw->xim,
@@ -190,24 +251,29 @@ update_preedit_string (xim_wayland_input_context_t *input_context,
                                  0,
                                  input_context->preedit_length,
                                  0,
-                                 strlen (text),
+                                 length,
                                  (const uint8_t *) text,
-                                 0,
-                                 NULL,
+                                 length,
+                                 feedbacks,
                                  error))
-        return false;
+        {
+          reset_preedit (input_context);
+          return false;
+        }
 
-      input_context->preedit_length = strlen (text);
+      free (input_context->preedit_string);
+      input_context->preedit_string = strdup (text);
+      input_context->preedit_length = length;
     }
   return true;
 }
 
 static void
 handle_wayland_preedit_string (void *data,
-			       struct wl_text_input *wl_text_input,
-			       uint32_t serial,
-			       const char *text,
-			       const char *commit)
+                               struct wl_text_input *wl_text_input,
+                               uint32_t serial,
+                               const char *text,
+                               const char *commit)
 {
   xim_wayland_input_context_t *input_context = data;
   xcb_xim_transport_t *transport = input_context->input_method->transport;
@@ -238,17 +304,55 @@ handle_wayland_preedit_string (void *data,
 
 static void
 handle_wayland_preedit_styling (void *data,
-				struct wl_text_input *wl_text_input,
-				uint32_t index,
-				uint32_t length,
-				uint32_t style)
+                                struct wl_text_input *wl_text_input,
+                                uint32_t index,
+                                uint32_t length,
+                                uint32_t style)
 {
+  xim_wayland_input_context_t *input_context = data;
+  xcb_xim_feedback_t feedback;
+  xim_wayland_styling_t *styling;
+
+  switch (style)
+    {
+    case WL_TEXT_INPUT_PREEDIT_STYLE_HIGHLIGHT:
+      feedback = XCB_XIM_FEEDBACK_HIGHLIGHT;
+      break;
+
+    case WL_TEXT_INPUT_PREEDIT_STYLE_UNDERLINE:
+      feedback = XCB_XIM_FEEDBACK_UNDERLINE;
+      break;
+
+    case WL_TEXT_INPUT_PREEDIT_STYLE_ACTIVE:
+      feedback = XCB_XIM_FEEDBACK_PRIMARY;
+      break;
+
+    case WL_TEXT_INPUT_PREEDIT_STYLE_SELECTION:
+      feedback = XCB_XIM_FEEDBACK_SECONDARY;
+
+    case WL_TEXT_INPUT_PREEDIT_STYLE_INACTIVE:
+      feedback = XCB_XIM_FEEDBACK_TERTIARY;
+      break;
+
+    default:
+      return;
+    }
+
+  styling = calloc (1, sizeof (xim_wayland_styling_t));
+  if (!styling)
+    return;
+
+  styling->index = index;
+  styling->length = length;
+  styling->feedback = feedback;
+
+  wl_list_insert (&input_context->preedit_styling_list, &styling->link);
 }
 
 static void
 handle_wayland_preedit_cursor (void *data,
-			       struct wl_text_input *wl_text_input,
-			       int32_t index)
+                               struct wl_text_input *wl_text_input,
+                               int32_t index)
 {
 }
 
@@ -298,44 +402,44 @@ handle_wayland_commit_string (void *data,
 
 static void
 handle_wayland_cursor_position (void *data,
-				struct wl_text_input *wl_text_input,
-				int32_t index,
-				int32_t anchor)
+                                struct wl_text_input *wl_text_input,
+                                int32_t index,
+                                int32_t anchor)
 {
 }
 
 static void
 handle_wayland_delete_surrounding_text (void *data,
-					struct wl_text_input *wl_text_input,
-					int32_t index,
-					uint32_t length)
+                                        struct wl_text_input *wl_text_input,
+                                        int32_t index,
+                                        uint32_t length)
 {
 }
 
 static void
 handle_wayland_keysym (void *data,
-		       struct wl_text_input *wl_text_input,
-		       uint32_t serial,
-		       uint32_t time,
-		       uint32_t sym,
-		       uint32_t state,
-		       uint32_t modifiers)
+                       struct wl_text_input *wl_text_input,
+                       uint32_t serial,
+                       uint32_t time,
+                       uint32_t sym,
+                       uint32_t state,
+                       uint32_t modifiers)
 {
 }
 
 static void
 handle_wayland_language (void *data,
-			 struct wl_text_input *wl_text_input,
-			 uint32_t serial,
-			 const char *language)
+                         struct wl_text_input *wl_text_input,
+                         uint32_t serial,
+                         const char *language)
 {
 }
 
 static void
 handle_wayland_text_direction (void *data,
-			       struct wl_text_input *wl_text_input,
-			       uint32_t serial,
-			       uint32_t direction)
+                               struct wl_text_input *wl_text_input,
+                               uint32_t serial,
+                               uint32_t direction)
 {
 }
 
@@ -484,6 +588,7 @@ xim_wayland_input_context_new (xim_wayland_t *xw,
 
   input_context->id = id;
   input_context->input_method = input_method;
+  wl_list_init (&input_context->preedit_styling_list);
 
   init_ic_attributes (input_context);
 

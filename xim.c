@@ -2089,7 +2089,7 @@ xcb_xim_preedit_draw (xcb_xim_server_connection_t *xim,
   PACK16 (transport, p, preedit_length);
   memcpy (p, preedit, preedit_length);
   p += preedit_length + PAD (2 + preedit_length);
-  PACK16 (transport, p, feedbacks_length);
+  PACK16 (transport, p, 4 * feedbacks_length);
   PACK16 (transport, p, 0);
   for (i = 0; i < feedbacks_length; i++)
     PACK32 (transport, p, feedbacks[i]);
