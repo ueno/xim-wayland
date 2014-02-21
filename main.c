@@ -1299,6 +1299,8 @@ handle_x_events (xim_wayland_t *xw)
                        error->error_code);
               free (error);
             }
+          else
+            fprintf (stderr, "can't dispatch XIM message\n");
           free (event);
           return false;
 
@@ -1331,6 +1333,9 @@ handle_x_events (xim_wayland_t *xw)
                            error->error_code);
                   free (error);
                 }
+              else
+                fprintf (stderr, "can't handle XIM request %i\n",
+                         major_opcode);
               free (event);
               return false;
             }
