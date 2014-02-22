@@ -1,10 +1,13 @@
 xim-wayland
 ===========
 
-xim-wayland is a protocol translator between XIM and wl_text_input
-protocol.  The code is mostly self-contained, including an XCB binding
-of XIM server protocol, and doesn't require any extra library except
-libwayland-client and libxcb.
+xim-wayland is a protocol translator between XIM and the wl_text_input
+protocol.  It runs as an XIM server that intercepts XIM requests and
+converts them into appropriate wl_text_input requests (and back).
+
+The code is mostly self-contained, including an XCB binding of XIM
+server protocol (not using worn IMdkit), and doesn't require any extra
+library except libwayland-client and libxcb.
 
 Usage
 =====
