@@ -230,8 +230,6 @@ update_preedit_string (xim_wayland_input_context_t *input_context,
       length = strlen (text);
 
       feedbacks = calloc (sizeof (xcb_xim_feedback_t), length);
-      for (i = 0; i < length; i++)
-        feedbacks[i] = XCB_XIM_FEEDBACK_UNDERLINE;
 
       wl_list_for_each (preedit_styling,
                         &input_context->preedit_styling_list, link)
