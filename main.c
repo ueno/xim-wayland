@@ -412,12 +412,12 @@ handle_wayland_commit_string (void *data,
     {
       if (error)
         {
-          fprintf (stderr, "can't commit: %i\n",
+          fprintf (stderr, "can't commit string: %i\n",
                    error->error_code);
           free (error);
         }
       else
-        fprintf (stderr, "can't commit\n");
+        fprintf (stderr, "can't commit string\n");
     }
 }
 
@@ -446,6 +446,35 @@ handle_wayland_keysym (void *data,
                        uint32_t state,
                        uint32_t modifiers)
 {
+  xim_wayland_input_context_t *input_context = data;
+  xcb_generic_error_t *error;
+
+  /* FIXME: consider modifiers and use xcb_xim_forward_event for
+     certain keysyms (e.g. Return).  */
+
+  if (state == WL_KEYBOARD_KEY_STATE_RELEASED)
+    return;
+
+  error = NULL;
+  if (!xcb_xim_commit (input_context->xw->xim,
+                       input_context->input_method->transport,
+                       input_context->input_method->id,
+                       input_context->id,
+                       XCB_XIM_COMMIT_FLAG_KEYSYM,
+                       sym,
+                       0,
+                       NULL,
+                       &error))
+    {
+      if (error)
+        {
+          fprintf (stderr, "can't commit keysym: %i\n",
+                   error->error_code);
+          free (error);
+        }
+      else
+        fprintf (stderr, "can't commit keysym\n");
+    }
 }
 
 static void
