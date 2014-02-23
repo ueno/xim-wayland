@@ -30,7 +30,7 @@ AC_PROG_INSTALL
 PKG_CHECK_MODULES([XCB], [xcb], ,
   [AC_MSG_ERROR([can't find xcb])])
 
-PKG_CHECK_MODULES([WAYLAND], [wayland-client xkbcommon],
+PKG_CHECK_MODULES([WAYLAND], [wayland-client],
                   [enable_wayland_client=yes], [enable_wayland_client=no])
 AC_PATH_PROG([wayland_scanner], [wayland-scanner])
 
